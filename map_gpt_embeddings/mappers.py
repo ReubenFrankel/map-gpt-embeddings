@@ -24,10 +24,16 @@ class GPTEmbeddingMapper(BasicPassthroughMapper):
         for result in t.cast(
             t.Iterable[SchemaMessage], super().map_schema_message(message_dict)
         ):
+            properties = result.schema["properties"]
+
             # Add an "embeddings" property to the schema
-            result.schema["properties"]["embeddings"] = th.ArrayType(
-                th.NumberType
-            ).to_dict()
+            properties["embeddings"] = th.ArrayType(th.NumberType).to_dict()
+
+            # Add metadata property to the schema, if not already present
+            metadata_property = self.config["document_metadata_property"]
+            if metadata_property not in properties:
+                properties[metadata_property] = th.ObjectType().to_dict()
+
             yield result
 
     config_jsonschema = th.PropertiesList(
@@ -88,7 +94,7 @@ class GPTEmbeddingMapper(BasicPassthroughMapper):
             A generator of record dicts.
         """
         raw_document_text = record[self.config["document_text_property"]]
-        metadata_dict = record[self.config["document_metadata_property"]]
+        metadata_dict = record.get(self.config["document_metadata_property"], {})
 
         if not self.config.get("split_documents", True):
             return record
