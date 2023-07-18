@@ -34,6 +34,10 @@ class GPTEmbeddingMapper(BasicPassthroughMapper):
             if metadata_property not in properties:
                 properties[metadata_property] = th.ObjectType().to_dict()
 
+            # Add segment_number to the schema and key properties
+            properties["segment_number"] = th.IntegerType().to_dict()
+            result.key_properties.append("segment_number")
+
             yield result
 
     config_jsonschema = th.PropertiesList(
@@ -118,10 +122,11 @@ class GPTEmbeddingMapper(BasicPassthroughMapper):
         elif len(document_segments) == 1:
             self.logger.debug("Document not split", len(document_segments))
 
-        for doc_segment in document_segments:
+        for i, doc_segment in enumerate(document_segments):
             new_record = record.copy()
             new_record[self.config["document_text_property"]] = doc_segment.page_content
             new_record[self.config["document_metadata_property"]] = doc_segment.metadata
+            new_record["segment_number"] = i
             yield new_record
 
     def get_embeddings(
